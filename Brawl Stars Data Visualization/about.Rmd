@@ -1,0 +1,23 @@
+## Author
+---
+- **Name:** "Nikhil Sivakumar"
+- **Email:** "nsiva3@illinois.edu"
+---
+
+## Info
+
+- This application contains different stats from Brawl Stars. Stats include Solo Stats, where the user can pull up my statistics from the game for different Brawlers and showed their ranks and trophies currently and the highest I have achieved with those Brawlers. 
+  
+  There is also the Season Rankings Chart where the user can find the top 200 users from several countries or global for different seasons. To obtain a specific country, type in a 2 digit code in the 2 Digit Country Code slot. Some codes for countries include US, MX, CA, CH, IN, ID, and JP, etc.. If the user wants global rankings, simply type 'global'. Each Brawl Star season last two weeks, which is why there are a lot of seasons that the user can access. However, the data found only starts from season 55 so any data from seasons before are not available. Rankings are based on the number of trophies at the end of a season. When the season ends, each brawler is reset to a lower amount of trophies (usually rounded down to the closet factor of 50, so someone with 675 trophies goes to 650 and someone with 747 trophies goes down to 700).
+  
+  The Brawler Info tab is a basic lookup of a Brawler's Gadget and Star Power. Each Brawler has 2 Gadgets that they can use a fixed number of times during a match and 2 Star Powers that gives a Brawler a certain power that can be only unlocked when the Brawler reaches Level 9. Each Brawler can only select one of each for a match if they have unlocked Gadgets and/or Star Powers. Users can drop down select any character in the game and select if they want to find that character's Star Power or Gadget. The Brawler Info tab only provides the name and id of these Star Powers and Gadgets, not more.
+
+## Brawl Stars
+
+- Brawl Stars is a mobile game made by Supercell. Users play with different characters (called Brawlers) who have different characteristics and weapons and they will try to accumulate trophies by winning different matches against other users. Users can also level up Brawlers by collecting brawler tokens. The higher the rank, the stronger the Brawler (that Brawler will do more damage in matches and have more health).
+
+## Data
+- Data was taken from the Brawl Stars API.
+
+## Reference
+- [Brawl Stars Api](https://developer.brawlstars.com/#/)
