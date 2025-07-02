@@ -1,5 +1,4 @@
 ---
-title: "STAT 425 Final Project"
 author: "Nikhil Sivakumar"
 date: '2023-12-06'
 output: html_document
