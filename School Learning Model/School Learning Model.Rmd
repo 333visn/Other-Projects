@@ -1,0 +1,236 @@
+---
+title: "STAT 425 Final Project"
+author: "Nikhil Sivakumar"
+date: '2023-12-06'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Retrieving Data
+```{r}
+library(tidyverse)
+library(readr) 
+library(readxl) 
+library(ggplot2)
+library(leaps)
+library(MASS)
+library(lmtest)
+library(glmnet)
+library(pls)
+library(dplyr)
+library(car)
+notinschoolfile <- read_csv("notinschool.csv")
+View(notinschoolfile)
+```
+
+# Cleaning Data
+```{r}
+notinschool <- notinschoolfile %>%
+  dplyr::select(-`...1`)
+notinschool
+```
+
+# Categorical Variables -> Numerical Variables
+# Race: Aboriginal = 0, Non-Aboriginal = 1
+# notinschool1
+```{r}
+notinschool1 = notinschool %>%
+  mutate(race = case_when(race == "aboriginal" ~ 0, race == "non-aboriginal" ~ 1))
+notinschool1
+```
+
+# Gender: Female = 1, Male = 0
+# notinschool2
+```{r}
+notinschool2 = notinschool1 %>%
+  mutate(gender = case_when(gender == "male" ~ 0, gender == "female" ~ 1))
+notinschool2
+```
+
+# School: F0 = 0, F1 = 1, F2 = 2, F3 = 3
+# notinschool3
+```{r}
+notinschool3 = notinschool2 %>%
+  mutate(school = case_when(school == "F0" ~ 0, school == "F1" ~ 1, 
+                            school == "F2" ~ 2, school == "F3" ~ 3))
+notinschool3
+```
+
+
+# Learner: Average = 0, Slow = 1
+# notinschool4
+```{r}
+notinschool4 = notinschool3 %>%
+  mutate(learner = case_when(learner == "average" ~ 0, learner == "slow" ~ 1))
+notinschool4
+```
+
+
+# Model Selection
+```{r}
+school_df = notinschool4
+
+best_subset = regsubsets(absent~., data = school_df)
+which.max(summary(best_subset)$adjr2)
+
+# race + gender + school by leaps and bounds
+# Using stepwise makes sense when you want to be computationally efficient, but there are 4 predictors so leaps and bounds algorithm is the best way to find the best model.
+
+#school_df = school_df %>%
+#  dplyr::select(-learner)
+
+best.lm = lm(absent~., data = school_df)
+# Absent ~ 19.199 - 8.146(race) - 3.179(gender) + 1.810(school)
+```
+
+# Unusual Observations
+```{r}
+#check high leverage points
+school.leverages = lm.influence(best.lm)$hat
+p.leverages = length(variable.names(best.lm))
+school.leverages.high = school.leverages[school.leverages > 2*p.leverages/154]
+#No high leverage points
+
+school_df.rstudent = rstudent(best.lm)
+bonferonni_cv = qt(.05/(2*154), 154 - length(variable.names(best.lm)) - 1)
+school_df.rstudent.sort = sort(abs(school_df.rstudent), decreasing = TRUE)[1:10]
+school_df.rstudent.sort
+#There are 2 outliers, data points 61 and 77.
+
+school_df.cooks = cooks.distance(best.lm)
+sort(school_df.cooks, decreasing = TRUE)[1:10]
+#There are no highly influential points as no points cook's distance exceeds 1.
+```
+
+
+# Check Model Assumptions
+```{r}
+bptest(best.lm)
+#Since the p-value exceeds the alpha of .05, we fail to reject the null and conclude that variance is constant.
+
+ks.test(best.lm$residuals, "pnorm")
+#Since the p-value is less than the alpha of .05, we reject the null and conclude that the model is not normal.
+
+durbinWatsonTest(best.lm)
+#Slight positive autocorrelation.
+
+corr_matrix = cor(school_df)
+corr_matrix
+#No highly correlated predictors.
+
+vif_value = vif(best.lm)
+vif_value
+#No VIFs are suspect, as multicollinearity is indicated by VIFs in the 5-10 range. The safe region for dw is 1.5 to 2.5, and the DW value for this is 1.1, however since there is no collinearity detected from the correlation matrix, and nothing suspect from vif, so will conclude that any autocorrelation is not an issue.
+```
+
+# Model Remedial
+```{r}
+#Just need to fix the normality assumption, however boxcox only works on strictly positive response variables and absences has a significant number of 0's that make it infeasible.
+school_df_no_zero = school_df %>%
+  filter(absent != 0)
+
+no_zero.lm = lm(absent~., data = school_df_no_zero)
+
+school.trans = boxcox(no_zero.lm)
+
+lamda = school.trans$x[which.max(school.trans$y)]
+
+new_school.trans = (school_df_no_zero ^(lamda) - 1)/ lamda
+
+new.lm = lm(absent~., data = new_school.trans)
+
+ks.test(new.lm$residuals, "pnorm")
+#The data points with 0's are more important than being able to normalise the error.
+```
+
+# Fitting an ANOVA Model
+
+# Box plots
+```{r}
+# Reverted back to categorical variables, notinschool original dataset
+
+# absent vs race
+boxplot(absent~race, data=notinschool, outline=FALSE)
+stripchart(absent~race, data=notinschool, method="jitter",
+           col="seagreen", vertical=TRUE, add=TRUE)
+
+# absent vs race
+boxplot(absent~gender, data=notinschool, outline=FALSE)
+stripchart(absent~gender, data=notinschool, method="jitter",
+           col="seagreen", vertical=TRUE, add=TRUE)
+
+# absent vs race
+boxplot(absent~school, data=notinschool, outline=FALSE)
+stripchart(absent~school, data=notinschool, method="jitter",
+           col="seagreen", vertical=TRUE, add=TRUE)
+
+# absent vs learner
+boxplot(absent~learner, data=notinschool, outline=FALSE)
+stripchart(absent~school, data=notinschool, method="jitter",
+           col="seagreen", vertical=TRUE, add=TRUE)
+
+# For all four factor charts, we cannot certainly tell if any observed differences are statistically significant
+```
+
+# Interaction Plots
+
+```{r}
+# Gender vs Race
+interaction.plot(notinschool$race, notinschool$gender, notinschool$absent)
+interaction.plot(notinschool$gender, notinschool$race, notinschool$absent)
+
+# Race vs School
+interaction.plot(notinschool$race, notinschool$school, notinschool$absent)
+interaction.plot(notinschool$school, notinschool$race, notinschool$absent)
+
+# Gender vs School
+interaction.plot(notinschool$gender, notinschool$school, notinschool$absent)
+interaction.plot(notinschool$school, notinschool$gender, notinschool$absent)
+
+# Gender vs Learner
+interaction.plot(notinschool$gender, notinschool$learner, notinschool$absent)
+interaction.plot(notinschool$learner, notinschool$gender, notinschool$absent)
+
+# Race vs Learner
+interaction.plot(notinschool$race, notinschool$learner, notinschool$absent)
+interaction.plot(notinschool$learner, notinschool$race, notinschool$absent)
+
+# Learner vs School
+interaction.plot(notinschool$learner, notinschool$school, notinschool$absent)
+interaction.plot(notinschool$school, notinschool$learner, notinschool$absent)
+
+# The only plot that had an intersection on the edge was school and race
+```
+
+# Creating a model
+```{r}
+# We set alpha to be 0.10 (so 90% confidence intervals)
+# school.full will not have race and gender interaction term since the interaction plot shows there is no interaction between the two variables
+school.full = lm(absent ~ school*race + school + race + gender + learner, notinschool)
+summary(school.full)
+# We choose alpha = 0.05 has the threshold for any interaction terms being statistically significant
+anova(school.full)
+# race:school interaction term is statistically significant, but school:gender interaction term is not
+# gender is also not statistically significant
+```
+
+# Cleaning out the model
+```{r}
+# We can drop gender and learner, they are not statistically significant
+school.reduced = lm(absent~ race, notinschool)
+summary(school.reduced)
+anova(school.reduced)
+```
+
+# Confidence Interval
+```{r}
+Interaction_CI = TukeyHSD(aov(absent ~ school*race, data = notinschool) , "school:race", conf.level = 0.9)
+Interaction_CI
+plot(Interaction_CI)
+# H0: There is no difference in mean in any of the factors
+# HA: There is a difference in mean for atleast one of the factors
+```
